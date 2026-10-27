@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Como um jogo é feito?</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#140a3a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#140a3a;}}
+:root[data-theme="dark"]{--bg:#140a3a;}
+*,*::before,*::after{box-sizing:inherit}
+html{height:100%;scroll-padding-top:env(safe-area-inset-top,0px);}
+html,body{margin:0;background:var(--bg);}
+body{height:100%;overflow:hidden;display:flex;align-items:center;justify-content:center;font-family:'Baloo 2',system-ui,sans-serif;}
+canvas{display:block;touch-action:none;outline:none;cursor:pointer;}
+</style>
+</head>
+<body>
+<canvas id="c" tabindex="0" aria-label="Apresentação: como um jogo é feito"></canvas>
+<script>
+(() => {
+'use strict';
+const W=1600, H=900;
+const cv=document.getElementById('c'), ctx=cv.getContext('2d');
+let scale=1;
+function resize(){
+  const dpr=Math.min(2,window.devicePixelRatio||1);
+  const bw=document.body.clientWidth, bh=document.body.clientHeight;
+  scale=Math.min(bw/W,bh/H);
+  cv.style.width=Math.floor(W*scale)+'px'; cv.style.height=Math.floor(H*scale)+'px';
+  cv.width=Math.round(W*scale*dpr); cv.height=Math.round(H*scale*dpr);
+  ctx.setTransform(scale*dpr,0,0,scale*dpr,0,0);
+}
+addEventListener('resize',resize); resize();
+
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const lerp=(a,b,u)=>a+(b-a)*u;
+const rnd=(a,b)=>a+Math.random()*(b-a);
+function rr(x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+function circ(x,y,r){ctx.beginPath();ctx.arc(x,y,r,0,Math.PI*2);ctx.fill();}
+function txt(s,x,y,size,col,align,weight,stroke){
+  ctx.font=`${weight||700} ${size}px 'Baloo 2', system-ui, sans-serif`;
+  ctx.textAlign=align||'left'; ctx.textBaseline='middle';
+  if(stroke){ctx.lineWidth=stroke.w;ctx.strokeStyle=stroke.c;ctx.lineJoin='round';ctx.strokeText(s,x,y);}
+  ctx.fillStyle=col; ctx.fillText(s,x,y);
+}
+const LOGO_URI='data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIGlkPSJhIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMzQwIDEwMDAgMzIwIiB3aWR0aD0iMTAwMCIgaGVpZ2h0PSIzMjAiPjxkZWZzPjxzdHlsZT4uYWMsLmFke2ZpbGwtcnVsZTpldmVub2RkO30uYWMsLmFle2ZpbGw6I2ZiZWEyNjt9LmFke2ZpbGw6I2ZmZjt9PC9zdHlsZT48L2RlZnM+PGcgaWQ9ImIiPjxwYXRoIGlkPSJjIiBjbGFzcz0iYWQiIGQ9Im02MC4xMSw1OTcuM2gtMTIuNTZsLTguMjEsMzUuOTZjLTEuNDksNi41OS01Ljg1LDEwLjQ1LTE0LjMxLDEwLjQ1LTUuNzIsMC05LjcxLTMuMzctNy45Ni0xMC45NWw4LjA4LTM1LjQ2aC0xMi41N2wtOC4yMSwzNi4yMWMtMS4xMiw1LjQ3LS44OCw5LjgzLDEuNDksMTMuMTksMy45OCw1LjQ4LDExLjgyLDYuNiwxNy4xNyw2LjYsMTQuOCwwLDI1LjYzLTYuMSwyOC44Ni0yMC41Mmw4LjIxLTM1LjQ3WiIvPjxwb2x5Z29uIGlkPSJkIiBjbGFzcz0iYWQiIHBvaW50cz0iNzcuNzcgNjEyLjk3IDkyLjk1IDY1MS45MSAxMDUuMTQgNjUxLjkxIDExNy43IDU5Ny4zIDEwNi4yNiA1OTcuMyA5Ny41NSA2MzUuMjQgOTcuMyA2MzUuMjQgODIuNzUgNTk3LjMgNjkuODEgNTk3LjMgNTcuMjQgNjUxLjkxIDY4LjY5IDY1MS45MSA3Ny42NCA2MTIuOTcgNzcuNzcgNjEyLjk3Ii8+PHBvbHlnb24gaWQ9ImUiIGNsYXNzPSJhZCIgcG9pbnRzPSIxMjYuNTQgNjUxLjkxIDEzOC45OCA1OTcuMyAxMjYuNzkgNTk3LjMgMTE0LjIxIDY1MS45MSAxMjYuNTQgNjUxLjkxIi8+PHBvbHlnb24gaWQ9ImYiIGNsYXNzPSJhZCIgcG9pbnRzPSIxODIuNzcgNTk3LjMgMTYwLjUgNjM4LjYgMTYwLjM4IDYzOC42IDE1Ny4yNiA1OTcuMyAxNDQuMDggNTk3LjMgMTUxLjQyIDY1MS45MSAxNjMuMTEgNjUxLjkxIDE5NS41OCA1OTcuMyAxODIuNzcgNTk3LjMiLz48cG9seWdvbiBpZD0iZyIgY2xhc3M9ImFkIiBwb2ludHM9IjIzNS4yNyA2MjguMDMgMjM3LjUxIDYxOC40NSAyMDguOSA2MTguNDUgMjExLjUxIDYwNi44OCAyNDIuNzQgNjA2Ljg4IDI0NC44NSA1OTcuMyAyMDEuNjggNTk3LjMgMTg5LjExIDY1MS45MSAyMzMuNzcgNjUxLjkxIDIzNi4wMSA2NDIuMjIgMjAzLjQyIDY0Mi4yMiAyMDYuNjUgNjI4LjAzIDIzNS4yNyA2MjguMDMiLz48cGF0aCBpZD0iaCIgY2xhc3M9ImFkIiBkPSJtMjQxLjk5LDY1MS45MWgxMi4wN2w0Ljk4LTIxLjM5aDEyLjY5YzkuMDgsMCw4LjgzLDIuODYsNy4yMSwxMC4zMi0xLjM3LDUuNi0xLjQ5LDguNDYtMS4yNCwxMS4wN2gxMy41NmwuMzctMS40OWMtMi4zNy0uODctMS45OS0yLjg2LS4xMy0xMC44MiwyLjM2LTEwLjIuMTMtMTEuOTQtNC4zNi0xMy45Myw2LjM1LTEuNzQsMTAuNy02Ljk3LDEyLjA3LTEyLjk1LDEuMTItNC43Mi43NS0xNS40My0xNC45My0xNS40M2gtMjkuNzNsLTEyLjU2LDU0LjYyWm0xOS4wNC0zMC42bDMuMzUtMTQuNTZoMTUuNDNjNy4yMiwwLDcuNTksNC4yMyw2Ljk3LDcuMDktMS4yNSw1LjM1LTQuODUsNy40Ny0xMS4zMyw3LjQ3aC0xNC40M1oiLz48cGF0aCBpZD0iaSIgY2xhc3M9ImFkIiBkPSJtMzAwLjIxLDYzNS4xMmMtMS40OSw2LjcxLS41LDE4LjE3LDIxLjAzLDE4LjE3LDUuMSwwLDIzLjUxLTEuMzgsMjcuMjUtMTcuOCwyLjI0LTkuODItNC4zNi0xMi45NC0xMi4wNy0xNC42OGwtMTMuNTYtMy4zNmMtMi4zNy0uNS01Ljg1LTEuMzctNC44Ni01LjYsMS4xMi00Ljk3LDYuOTYtNi41OSwxMS42OS02LjU5LDEwLjcsMCwxMC4zMiw1LjcyLDEwLjIsOC4yMWgxMS42OWMxLjQ5LTYuNzItLjg3LTE3LjY3LTE4Ljc4LTE3LjY3LTE5LjE2LDAtMjUuMTMsMTAuNy0yNi41LDE2LjgtMi43NCwxMi4wNyw1Ljk3LDE0LjA2LDE0LjkzLDE2LjA1bDYuMDksMS4zN2M1Ljg1LDEuMzcsMTAuMDcsMi40OSw5LjA4LDYuODQtMS4zNyw1LjcyLTguMDgsNy4xLTEzLjk0LDcuMS0xMC43LDAtMTEuMDctNS44NS0xMC40NS04LjgzaC0xMS44MVoiLz48cG9seWdvbiBpZD0iaiIgY2xhc3M9ImFkIiBwb2ludHM9IjM2My42NiA2NTEuOTEgMzc2LjEgNTk3LjMgMzYzLjkxIDU5Ny4zIDM1MS4zNCA2NTEuOTEgMzYzLjY2IDY1MS45MSIvPjxwYXRoIGlkPSJrIiBjbGFzcz0iYWQiIGQ9Im0zNzMuMzYsNjUxLjkxaDI1LjVjMTkuNCwwLDI4LjI0LTE2LjkyLDMwLjk4LTI4LjYxLDIuMzYtMTAuMzMsMS44Ni0yNi4wMS0xOC4wNS0yNi4wMWgtMjZsLTEyLjQ0LDU0LjYyWm0yMi40LTQ1LjE2aDExLjgyYzUuMjMsMCwxMy4xOSwxLjI1LDkuNDUsMTcuNDItMS45OSw4Ljk2LTcuNDcsMTguMjktMTcuNTUsMTguMjloLTExLjk0bDguMjEtMzUuNzFaIi8+PHBhdGggaWQ9ImwiIGNsYXNzPSJhZCIgZD0ibTQ0NS43Niw2NDAuNTloMjEuNjVsMS4yNCwxMS4zM2gxMy4zMWwtOC4yLTU0LjYyaC0xNC4xOGwtMzMuNDcsNTQuNjJoMTIuOTVsNi43MS0xMS4zM1ptMTcuOTItMzAuOTdoLjEybDIuMzcsMjEuNTJoLTE0LjkzbDEyLjQ0LTIxLjUyWiIvPjxwYXRoIGlkPSJtIiBjbGFzcz0iYWQiIGQ9Im00ODguMDYsNjUxLjkxaDI1LjUxYzE5LjQxLDAsMjguMzYtMTYuOTIsMzAuOTctMjguNjEsMi4zOC0xMC4zMywxLjg4LTI2LjAxLTE3LjkxLTI2LjAxaC0yNi4wMWwtMTIuNTYsNTQuNjJabTIyLjM5LTQ1LjE2aDExLjgyYzUuMjMsMCwxMy4zMSwxLjI1LDkuNTksMTcuNDItMi4xMiw4Ljk2LTcuNTksMTguMjktMTcuNTQsMTguMjloLTExLjk1bDguMDgtMzUuNzFaIi8+PHBvbHlnb24gaWQ9Im4iIGNsYXNzPSJhZCIgcG9pbnRzPSI1OTEuNyA2MjguMDMgNTkzLjkzIDYxOC40NSA1NjUuMTkgNjE4LjQ1IDU2Ny44MSA2MDYuODggNTk5LjAzIDYwNi44OCA2MDEuMjggNTk3LjMgNTU3Ljk4IDU5Ny4zIDU0NS41NCA2NTEuOTEgNTkwLjIgNjUxLjkxIDU5Mi4zMiA2NDIuMjIgNTU5LjczIDY0Mi4yMiA1NjIuOTYgNjI4LjAzIDU5MS43IDYyOC4wMyIvPjxwYXRoIGlkPSJvIiBjbGFzcz0iYWQiIGQ9Im02MzUuNzQsNjMyLjE0aDE0LjE4YzE1LjgsMCwyMS41Mi0xMi40NSwyMi43Ny0xNy40MiwyLjM2LTEwLjctMi45OS0xNy40Mi0xNC4zMS0xNy40MmgtMjYuODdsLTEyLjU2LDU0LjYyaDEyLjMxbDQuNDctMTkuNzhabTIuMjQtOS4zM2wzLjYxLTE2LjA1aDkuODJjNy41OSwwLDEwLjIxLDIuMTIsOS4wOCw3LjQ2LS42MiwyLjQ4LTEuOTgsOC41OS0xMS4xOSw4LjU5aC0xMS4zMloiLz48cGF0aCBpZD0icCIgY2xhc3M9ImFkIiBkPSJtNjgwLjksNjQwLjU5aDIxLjY0bDEuMjUsMTEuMzNoMTMuMzFsLTguMjEtNTQuNjJoLTE0LjE5bC0zMy40Niw1NC42MmgxMi45NGw2LjcyLTExLjMzWm0xNy45MS0zMC45N2guMTNsMi4zNiwyMS41MmgtMTUuMDVsMTIuNTYtMjEuNTJaIi8+PHBhdGggaWQ9InEiIGNsYXNzPSJhZCIgZD0ibTc4Mi43OSw1OTcuM2gtMTIuNDRsLTguMzMsMzUuOTZjLTEuNDksNi41OS01LjcyLDEwLjQ1LTE0LjE4LDEwLjQ1LTUuNzMsMC05LjcxLTMuMzctNy45Ny0xMC45NWw4LjA4LTM1LjQ2aC0xMi41NmwtOC4zMywzNi4yMWMtMSw1LjQ3LS44OCw5LjgzLDEuNjEsMTMuMTksMy45OSw1LjQ4LDExLjcxLDYuNiwxNy4xOCw2LjYsMTQuOCwwLDI1LjYzLTYuMSwyOC44Ni0yMC41Mmw4LjA5LTM1LjQ3WiIvPjxwb2x5Z29uIGlkPSJyIiBjbGFzcz0iYWQiIHBvaW50cz0iNzkzLjEyIDU5Ny4zIDc4MC41NCA2NTEuOTEgODIyLjEgNjUxLjkxIDgyNC40NyA2NDEuOTYgNzk1LjEgNjQxLjk2IDgwNS40MyA1OTcuMyA3OTMuMTIgNTk3LjMiLz48cG9seWdvbiBpZD0icyIgY2xhc3M9ImFkIiBwb2ludHM9Ijg0MC4xNSA2NTEuOTEgODUyLjcxIDU5Ny4zIDg0MC40IDU5Ny4zIDgyNy45NSA2NTEuOTEgODQwLjE1IDY1MS45MSIvPjxwYXRoIGlkPSJ0IiBjbGFzcz0iYWQiIGQ9Im04NTAuNzEsNjM1LjEyYy0xLjYyLDYuNzEtLjUsMTguMTcsMjEuMDMsMTguMTcsNS4xMSwwLDIzLjUxLTEuMzgsMjcuMjYtMTcuOCwyLjI0LTkuODItNC40OC0xMi45NC0xMi4wOC0xNC42OGwtMTMuNTUtMy4zNmMtMi4zNi0uNS01Ljk3LTEuMzctNC45Ny01LjYsMS4xMi00Ljk3LDcuMDktNi41OSwxMS44Mi02LjU5LDEwLjcsMCwxMC4zMiw1LjcyLDEwLjA3LDguMjFoMTEuODJjMS41LTYuNzItLjg2LTE3LjY3LTE4LjkxLTE3LjY3LTE5LjAzLDAtMjUsMTAuNy0yNi40OSwxNi44LTIuNzQsMTIuMDcsNi4wOSwxNC4wNiwxNS4wNCwxNi4wNWw1Ljk3LDEuMzdjNS45OCwxLjM3LDEwLjA3LDIuNDksOS4yLDYuODQtMS4zNyw1LjcyLTguMiw3LjEtMTMuOTMsNy4xLTEwLjgyLDAtMTEuMDctNS44NS0xMC40Ni04LjgzaC0xMS44MVoiLz48cG9seWdvbiBpZD0idSIgY2xhc3M9ImFkIiBwb2ludHM9IjkyNy44NSA2NTEuOTEgOTM4LjA1IDYwNi44OCA5NTUuODQgNjA2Ljg4IDk1OC4wOCA1OTcuMyA5MTAuMTggNTk3LjMgOTA4LjA3IDYwNi44OCA5MjUuNzQgNjA2Ljg4IDkxNS41MyA2NTEuOTEgOTI3Ljg1IDY1MS45MSIvPjxwYXRoIGlkPSJ2IiBjbGFzcz0iYWQiIGQ9Im05NjAuMDcsNjQwLjU5aDIxLjY1bDEuMjQsMTEuMzNoMTMuMzFsLTguMjEtNTQuNjJoLTE0LjE4bC0zMy40Nyw1NC42MmgxMi45NWw2LjcyLTExLjMzWm0xNy45MS0zMC45N2guMTNsMi4zNywyMS41MmgtMTQuOTNsMTIuNDQtMjEuNTJaIi8+PC9nPjxnIGlkPSJ3Ij48cGF0aCBpZD0ieCIgY2xhc3M9ImFjIiBkPSJtODI2LjYyLDM3Ny45NGwtMjEuNzksNDUuMjFoNTMuOWM0LjY2LDAsNy41Ny0uNzYsMTEuNTktMy4xNCwzLjc4LTIuMjcsNS44LTQuMjksNy42OC04LjMxbDcuMDUtMTQuNjFjMi4xNC00LjI4LDEuMTMtOC4wNi0xLjI2LTEyLjA5LTIuODktNC45MS03LjE4LTcuMDUtMTIuODUtNy4wNWgtNDQuMzNabS01OS4wNi0zMS4yM2gxODIuMzZjNy45NCwwLDEyLjk3LDMuNTMsMTgsOS41Nyw4LjMyLDEwLjIsNS41NSwyMS45MSwwLDMzLjc0bC0xOC42MywzOS41NWMtNC4xNiw4Ljk0LTYuNTUsMTQuNjEtMTQuMTEsMjEuMDMtOS45NSw4LjMyLTE4LjUxLDEwLjg0LTMxLjQ5LDEwLjg0aC0xMTcuNWMtNi41NSwxNi42Mi0xMy45OCwyNS42OS0yOC44MywzNS42NC0xMy4zNSw4LjgyLTIzLjE3LDEyLjcyLTM5LjE2LDEyLjcyaC0yNi45Nmw3Ni4zMS0xNjMuMDhaIi8+PHBhdGggaWQ9InkiIGNsYXNzPSJhZSIgZD0ibTgyNi42MiwzNzcuOTRsLTIxLjc5LDQ1LjIxaDUzLjljNC42NiwwLDcuNTctLjc2LDExLjU5LTMuMTQsMy43OC0yLjI3LDUuOC00LjI5LDcuNjgtOC4zMWw3LjA1LTE0LjYxYzIuMTQtNC4yOCwxLjEzLTguMDYtMS4yNi0xMi4wOS0yLjg5LTQuOTEtNy4xOC03LjA1LTEyLjg1LTcuMDVoLTQ0LjMzWm0tNTkuMDYtMzEuMjNoMTgyLjM2YzcuOTQsMCwxMi45NywzLjUzLDE4LDkuNTcsOC4zMiwxMC4yLDUuNTUsMjEuOTEsMCwzMy43NGwtMTguNjMsMzkuNTVjLTQuMTYsOC45NC02LjU1LDE0LjYxLTE0LjExLDIxLjAzLTkuOTUsOC4zMi0xOC41MSwxMC44NC0zMS40OSwxMC44NGgtMTE3LjVjLTYuNTUsMTYuNjItMTMuOTgsMjUuNjktMjguODMsMzUuNjQtMTMuMzUsOC44Mi0yMy4xNywxMi43Mi0zOS4xNiwxMi43MmgtMjYuOTZsNzYuMzEtMTYzLjA4WiIvPjxwYXRoIGlkPSJ6IiBjbGFzcz0iYWMiIGQ9Im01NTMuMiwzNDcuMzRoNjkuMjdsLTUzLjI2LDExNC43M2MtNy45NCwxNy0xNywyNi44Mi0zMi43NSwzOC4xNS05LjU3LDcuMDYtMzcuMDIsMTUuMjQtNjAuMzIsMTAuMmwtNDQuMzItODYuMDEtMTcuMjYsMzcuNjVjLTcuOCwxNi43NS0xNy4xMywyNi44Mi0zMi43NSwzOC4xNS05LjY5LDcuMDYtMzcuMTUsMTUuMjQtNjAuNDQsMTAuMmw3Ny4wNi0xNjMuMDhoNjkuMzlsNDcuNDcsNzkuNzIsMzcuOTEtNzkuNzJaIi8+PHBhdGggaWQ9ImFhIiBjbGFzcz0iYWMiIGQ9Im01ODIuMDQsNTA5LjgxbDc2LjQ0LTE2My4xaDY5LjI3bC01My4yNywxMTQuNzNjLTcuOTQsMTctMTcuMDEsMjYuODMtMzIuNzUsMzguMTUtOS41OCw3LjA3LTM2LjQsMTUuMjQtNTkuNywxMC4yMWgwWiIvPjxwYXRoIGlkPSJhYiIgY2xhc3M9ImFjIiBkPSJtMjA2LjQ4LDM0Ni43MWgtNzIuNTRsLTQ4LjExLDEwMi42NGMtNy40MywxNS40OS03LjgxLDI5LjIyLDQuNDEsNDMuOTYsMTMuNiwxNi4yNCw0MS42OSwyMi45Miw3MC42NiwyMi45Mmg1Mi42NGMyNi40NSwwLDQzLjgzLTQuOTEsNjQuMjMtMjEuNjYsMTIuNTktMTAuNDYsMTguNzctMTguMzksMjUuNjktMzMuMTJsNTMuMjgtMTE0LjczaC03NC41NmwtMzkuMTYsODIuODdjLTEwLjgzLDI2LjA3LTE2LjYzLDMxLjg2LTUxLjI2LDMxLjg2LTIxLjkxLDAtMzAuMzUtMTcuODgtMjMuOC0zMS44NmwzOC41My04Mi44N1oiLz48L2c+PC9zdmc+';
+const QR='11111110111010011010101111111|10000010011101101110101000001|10111010101010111110001011101|10111010001000100111001011101|10111010011111110110001011101|10000010111010010100101000001|11111110101010101010101111111|00000000010100111010000000000|10100011011011100001100100101|01100100100111100101101100011|10001111011010010001011111101|00011000000011000011011001000|11111110000101011001101000001|11001000111100001101101100011|01100011110111101101000010001|10010000000110111010011010000|11110110111001100011101100001|01111100010011100101101100111|11001111110110010001100101001|00101000100011000000110110000|11110010011111011001111111010|00000000100100001001100011101|11111110111101101010101010001|10000010001100111001100010001|10111010011011101001111111000|10111010010000100011010011110|10111010100111110010100010011|10000010010110011001100101000|11111110101011101010111010001'.split('|');
+const SITE='www.unipcomputacao.com.br';
+let logoImg=null; { const im=new Image(); im.onload=()=>logoImg=im; im.src=LOGO_URI; }
+
+/* ---------------- estado ---------------- */
+let T=0, slide=0, st=0, notas=true;
+const teclas={};
+const mouse={x:W/2,y:H/2};
+
+/* ---------------- moldura ---------------- */
+const PAINEL={x:706,y:212,w:820,h:496};
+function fundo(){
+  const g=ctx.createLinearGradient(0,0,0,H);
+  g.addColorStop(0,'#120838'); g.addColorStop(.55,'#241653'); g.addColorStop(1,'#140d33');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+  ctx.save(); ctx.globalAlpha=.10; ctx.fillStyle='#fff';
+  for(let i=0;i<60;i++){ const x=(i*263+Math.sin(i)*40)%W, y=(i*137+Math.cos(i*2)*30)%H; circ(x,y,1.6); }
+  ctx.restore();
+}
+function cartao(x,y,w,h){
+  ctx.fillStyle='rgba(12,7,32,.72)'; rr(x,y,w,h,24); ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.14)'; ctx.lineWidth=2; ctx.stroke();
+}
+function marca(){
+  if(logoImg&&logoImg.naturalWidth){
+    const k=170/logoImg.naturalWidth, w=170, h=logoImg.naturalHeight*k;
+    ctx.drawImage(logoImg, 60, 38, w, h);
+    txt('Ciência da Computação (Jundiaí)', 60, 38+h+18, 20, '#c3b6ff', 'left', 700);
+  }
+}
+function rodape(){
+  const s=SLIDES[slide];
+  if(notas && s.nota){
+    const ls=quebra(s.nota, 23, W-470);
+    const alt=Math.max(58, 26+ls.length*30);
+    ctx.fillStyle='rgba(10,6,28,.92)'; rr(60,H-62-alt,W-120,alt,16); ctx.fill();
+    ctx.strokeStyle='rgba(255,210,63,.35)'; ctx.lineWidth=2; ctx.stroke();
+    txt('ROTEIRO DO MONITOR', 84, H-62-alt/2, 18, '#ffd23f', 'left', 800);
+    ls.forEach((ln,i)=> txt(ln, 340, H-62-alt/2 - (ls.length-1)*15 + i*30, 23, '#e8e2ff', 'left', 700));
+  }
+  for(let i=0;i<SLIDES.length;i++){
+    ctx.fillStyle = i===slide? '#ffd23f' : 'rgba(255,255,255,.22)';
+    circ(W/2-(SLIDES.length-1)*13+i*26, H-26, i===slide?7:5);
+  }
+  ctx.save(); ctx.globalAlpha=.5+.5*Math.abs(Math.sin(T*2.4));
+  txt('clique para avançar', W-70, H-26, 22, '#7ff9ff', 'right', 700); ctx.restore();
+  txt((slide+1)+' / '+SLIDES.length, 70, H-26, 22, 'rgba(255,255,255,.55)', 'left', 700);
+}
+function quebra(texto, tam, largMax){
+  ctx.font=`700 ${tam}px 'Baloo 2', system-ui, sans-serif`;
+  const palavras=texto.split(' '), linhas=[]; let l='';
+  for(const p of palavras){
+    const teste = l? l+' '+p : p;
+    if(ctx.measureText(teste).width>largMax && l){ linhas.push(l); l=p; } else l=teste;
+  }
+  if(l) linhas.push(l); return linhas;
+}
+function titulo(s){
+  txt(s.titulo, 80, 214, 62, '#ffd23f', 'left', 800, {w:8,c:'#1a1030'});
+  if(s.sub) txt(s.sub, 80, 274, 30, '#c3b6ff', 'left', 700);
+  let y=346;
+  (s.linhas||[]).forEach(l=>{
+    const linhas=quebra(l, 30, 560);
+    ctx.fillStyle='#ffd23f'; circ(96, y, 7);
+    linhas.forEach((ln,k)=> txt(ln, 124, y+k*38, 30, '#ffffff', 'left', 700));
+    y += 38*linhas.length + 34;
+  });
+}
+
+/* ---------------- bonequinho articulado (slide 7) ---------------- */
+function boneco(cx,cy,p,cor,alpha){
+  const v=(a,l)=>({x:Math.sin(a)*l, y:Math.cos(a)*l});
+  const add=(A,B)=>({x:A.x+B.x,y:A.y+B.y});
+  const q={x:cx,y:cy};
+  const pes=add(q,v(Math.PI-p.lean,86));
+  const cab=add(pes,v(Math.PI-p.lean,34));
+  const coF=add(pes,v(p.aFa,58)), maF=add(coF,v(p.aFb,52));
+  const coB=add(pes,v(p.aBa,58)), maB=add(coB,v(p.aBb,52));
+  const joF=add(q,v(p.lFa,64)), peF=add(joF,v(p.lFb,58));
+  const joB=add(q,v(p.lBa,64)), peB=add(joB,v(p.lBb,58));
+  ctx.save(); if(alpha!==undefined) ctx.globalAlpha=alpha;
+  ctx.strokeStyle=cor; ctx.lineWidth=13; ctx.lineCap='round'; ctx.lineJoin='round';
+  const linha=(a,b)=>{ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();};
+  linha(q,pes); linha(pes,coB); linha(coB,maB); linha(q,joB); linha(joB,peB);
+  linha(pes,coF); linha(coF,maF); linha(q,joF); linha(joF,peF);
+  ctx.fillStyle=cor; circ(cab.x,cab.y,20);
+  ctx.restore();
+}
+const POSE_A={lean:.16,aFa:.62,aFb:2.30,aBa:.42,aBb:2.42,lFa:.34,lFb:.16,lBa:-.30,lBb:-.52};
+const POSE_B={lean:.30,aFa:1.52,aFb:1.54,aBa:.60,aBb:2.50,lFa:.52,lFb:.28,lBa:-.42,lBb:-.72};
+const misturaPose=(a,b,u)=>{const o={};for(const k in a)o[k]=lerp(a[k],b[k],u);return o;};
+
+/* ---------------- animações de cada slide ---------------- */
+function animCapa(t){
+  const P=PAINEL;
+  const chao=P.y+P.h-90;
+  ctx.fillStyle='rgba(122,231,255,.25)'; ctx.fillRect(P.x+40,chao,P.w-80,4);
+  const x=P.x+120+((t*110)%(P.w-240));
+  const pulo=Math.abs(Math.sin(t*3))*46;
+  boneco(x, chao-pulo, misturaPose(POSE_A,POSE_B,(Math.sin(t*3)+1)/2), '#7ff9ff');
+  for(let i=0;i<3;i++){
+    const ix=P.x+180+i*210, iy=P.y+90+((t*120+i*90)%(chao-P.y-110));
+    ctx.fillStyle='#ffd23f'; circ(ix,iy,16);
+    txt(['1','0','1'][i], ix, iy+1, 20, '#3b1a80', 'center', 800);
+  }
+  txt('um jogo é isto: desenhos que mudam de lugar', P.x+P.w/2, P.y+P.h-34, 24, '#c3b6ff', 'center', 700);
+}
+function animPlano(t){
+  const P=PAINEL, ox=P.x+90, oy=P.y+70, w=P.w-200, h=P.h-190;
+  ctx.strokeStyle='rgba(255,255,255,.12)'; ctx.lineWidth=1;
+  for(let i=0;i<=10;i++){ ctx.beginPath(); ctx.moveTo(ox+i*w/10,oy); ctx.lineTo(ox+i*w/10,oy+h); ctx.stroke(); }
+  for(let j=0;j<=6;j++){ ctx.beginPath(); ctx.moveTo(ox,oy+j*h/6); ctx.lineTo(ox+w,oy+j*h/6); ctx.stroke(); }
+  ctx.strokeStyle='#ffd23f'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(ox+w,oy); ctx.stroke();
+  ctx.beginPath(); ctx.moveTo(ox,oy); ctx.lineTo(ox,oy+h); ctx.stroke();
+  txt('x  →', ox+w-10, oy-24, 24, '#ffd23f', 'right', 800);
+  txt('y ↓', ox-16, oy+40, 24, '#ffd23f', 'right', 800);
+  txt('(0, 0)', ox-16, oy-20, 22, '#c3b6ff', 'right', 700);
+  const u=(Math.sin(t*.9)+1)/2, px=ox+lerp(40,w-40,u), py=oy+lerp(30,h-40,(Math.sin(t*1.4)+1)/2);
+  ctx.strokeStyle='rgba(127,249,255,.5)'; ctx.setLineDash([6,6]); ctx.lineWidth=2;
+  ctx.beginPath(); ctx.moveTo(ox,py); ctx.lineTo(px,py); ctx.moveTo(px,oy); ctx.lineTo(px,py); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.fillStyle='#7ff9ff'; circ(px,py,16);
+  txt(`x = ${Math.round(px-ox)}   y = ${Math.round(py-oy)}`, P.x+P.w/2, P.y+P.h-52, 32, '#fff', 'center', 800);
+  txt('no computador, o y cresce para baixo', P.x+P.w/2, P.y+P.h-14, 22, '#c3b6ff', 'center', 700);
+}
+function animQuadros(t){
+  const P=PAINEL;
+  for(let i=0;i<5;i++){
+    const x=P.x+52+i*150, y=P.y+40;
+    ctx.fillStyle='rgba(255,255,255,.06)'; rr(x,y,128,150,10); ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,.2)'; ctx.lineWidth=2; ctx.stroke();
+    ctx.fillStyle='#ffd23f'; circ(x+64, y+26+i*24, 13);
+    txt('quadro '+(i+1), x+64, y+166, 18, '#c3b6ff', 'center', 700);
+  }
+  const chao=P.y+P.h-64, bx=P.x+P.w/2, by=P.y+300+((t*200)%(chao-P.y-300));
+  ctx.fillStyle='rgba(122,231,255,.25)'; ctx.fillRect(P.x+60,chao,P.w-120,4);
+  ctx.fillStyle='#7ff9ff'; circ(bx,by,20);
+  txt('y = y + velocidade', P.x+P.w/2, P.y+262, 34, '#fff', 'center', 800);
+  txt('60 vezes por segundo', P.x+P.w/2, P.y+P.h-28, 24, '#c3b6ff', 'center', 700);
+}
+function animVariaveis(t){
+  const P=PAINEL;
+  const vida=Math.max(0, 100-((t*22)%130));
+  const pontos=Math.floor((t*7)%50)*10;
+  const vel=(4+Math.sin(t)*2).toFixed(1);
+  const caixas=[['VIDA',Math.round(vida),'#ff6fa5'],['PONTOS',pontos,'#ffd23f'],['VELOCIDADE',vel,'#7ff9ff']];
+  caixas.forEach((c,i)=>{
+    const x=P.x+60, y=P.y+60+i*136;
+    ctx.fillStyle='rgba(255,255,255,.06)'; rr(x,y,P.w-120,108,16); ctx.fill();
+    ctx.strokeStyle='rgba(255,255,255,.16)'; ctx.lineWidth=2; ctx.stroke();
+    txt(c[0], x+28, y+54, 30, '#c3b6ff', 'left', 800);
+    txt(String(c[1]), x+330, y+54, 46, c[2], 'left', 800);
+    if(i===0){
+      ctx.fillStyle='rgba(255,255,255,.12)'; rr(x+470,y+38,240,32,10); ctx.fill();
+      ctx.fillStyle=c[2]; rr(x+470,y+38,240*vida/100,32,10); ctx.fill();
+    }
+  });
+  txt('valores com nome, que o programa consulta e muda', P.x+P.w/2, P.y+P.h-26, 24, '#c3b6ff', 'center', 700);
+}
+function animCondicao(t){
+  const P=PAINEL, cy=P.y+200;
+  const ax=P.x+150, bx=P.x+P.w-150-Math.abs(Math.sin(t*.8))*0*1;
+  const aprox=(Math.sin(t*1.1)+1)/2;
+  const x1=lerp(P.x+110, P.x+P.w/2-40, aprox), x2=lerp(P.x+P.w-110, P.x+P.w/2+40, aprox);
+  const dist=Math.round(x2-x1);
+  const acerto=dist<90;
+  ctx.fillStyle='#7ff9ff'; circ(x1,cy,34);
+  ctx.fillStyle='#ff6fa5'; circ(x2,cy,34);
+  ctx.strokeStyle=acerto?'#ffd23f':'rgba(255,255,255,.35)'; ctx.lineWidth=3; ctx.setLineDash([8,8]);
+  ctx.beginPath(); ctx.moveTo(x1,cy); ctx.lineTo(x2,cy); ctx.stroke(); ctx.setLineDash([]);
+  txt('distância = '+dist, (x1+x2)/2, cy-58, 26, '#fff', 'center', 800);
+  ctx.fillStyle= acerto? 'rgba(255,210,63,.18)':'rgba(255,255,255,.05)';
+  rr(P.x+70, P.y+300, P.w-140, 130, 18); ctx.fill();
+  ctx.strokeStyle= acerto? '#ffd23f':'rgba(255,255,255,.16)'; ctx.lineWidth=2; ctx.stroke();
+  txt('se (distância < 90) {', P.x+104, P.y+340, 30, acerto?'#ffd23f':'#c3b6ff', 'left', 800);
+  txt('pontos = pontos + 1;', P.x+144, P.y+382, 30, acerto?'#fff':'#9a8fd0', 'left', 700);
+  txt('}', P.x+104, P.y+418, 30, acerto?'#ffd23f':'#c3b6ff', 'left', 800);
+  if(acerto){ ctx.save(); ctx.globalAlpha=.8; txt('ACERTOU!', P.x+P.w-130, P.y+340, 38, '#ffd23f', 'right', 800); ctx.restore(); }
+}
+function animEntrada(t){
+  const P=PAINEL;
+  const teclasDesenho=[['W',P.x+300,P.y+80],['A',P.x+220,P.y+168],['S',P.x+300,P.y+168],['D',P.x+380,P.y+168]];
+  for(const [k,x,y] of teclasDesenho){
+    const on=teclas[k];
+    ctx.fillStyle= on? '#ffd23f':'rgba(255,255,255,.08)'; rr(x,y,72,72,12); ctx.fill();
+    ctx.strokeStyle= on? '#ffd23f':'rgba(255,255,255,.25)'; ctx.lineWidth=2; ctx.stroke();
+    txt(k, x+36, y+38, 34, on?'#3b1a80':'#fff', 'center', 800);
+  }
+  ctx.fillStyle='rgba(255,255,255,.08)'; rr(P.x+540,P.y+90,120,150,26); ctx.fill();
+  ctx.strokeStyle='rgba(255,255,255,.25)'; ctx.lineWidth=2; ctx.stroke();
+  ctx.fillStyle= mouse.x<W/2? '#ffd23f':'rgba(255,255,255,.2)'; rr(P.x+546,P.y+96,54,60,20); ctx.fill();
+  txt('mouse', P.x+600, P.y+266, 22, '#c3b6ff', 'center', 700);
+  const chao=P.y+P.h-80;
+  const px=clamp(P.x+120+(mouse.x-W/2)*.55, P.x+70, P.x+P.w-70);
+  const pulo= teclas['W']? 54:0;
+  ctx.fillStyle='rgba(122,231,255,.25)'; ctx.fillRect(P.x+50,chao,P.w-100,4);
+  boneco(px, chao-pulo, misturaPose(POSE_A,POSE_B, teclas['D']||teclas['A']?1:0), '#7ff9ff');
+  txt('experimente: mexa o mouse e aperte W, A, S, D', P.x+P.w/2, P.y+P.h-26, 24, '#ffd23f', 'center', 700);
+}
+function animPoses(t){
+  const P=PAINEL, cy=P.y+300;
+  const u=(Math.sin(t*1.6)+1)/2;
+  boneco(P.x+210, cy, POSE_A, 'rgba(255,255,255,.18)');
+  boneco(P.x+P.w-210, cy, POSE_B, 'rgba(255,255,255,.18)');
+  boneco(lerp(P.x+210,P.x+P.w-210,u), cy, misturaPose(POSE_A,POSE_B,u), '#ffd23f');
+  txt('pose 1', P.x+210, P.y+80, 26, '#c3b6ff', 'center', 700);
+  txt('pose 2', P.x+P.w-210, P.y+80, 26, '#c3b6ff', 'center', 700);
+  txt('o computador inventa tudo o que está no meio', P.x+P.w/2, P.y+P.h-28, 24, '#c3b6ff', 'center', 700);
+}
+function animIA(t){
+  const P=PAINEL;
+  const regras=[['está longe','aproxima'],['está perto','ataca'],['tomou golpe','defende']];
+  const ativo=Math.floor(t*.7)%3;
+  regras.forEach((r,i)=>{
+    const y=P.y+70+i*132, on=i===ativo;
+    ctx.fillStyle= on? 'rgba(255,210,63,.16)':'rgba(255,255,255,.05)'; rr(P.x+60,y,P.w-120,104,16); ctx.fill();
+    ctx.strokeStyle= on? '#ffd23f':'rgba(255,255,255,.14)'; ctx.lineWidth=2; ctx.stroke();
+    txt('se '+r[0], P.x+96, y+52, 30, on?'#ffd23f':'#c3b6ff', 'left', 800);
+    txt('→', P.x+400, y+52, 34, on?'#fff':'#6d5fb0', 'left', 800);
+    txt(r[1], P.x+460, y+52, 30, on?'#fff':'#9a8fd0', 'left', 700);
+  });
+  txt('não é mágica: é uma lista de regras simples', P.x+P.w/2, P.y+P.h-26, 24, '#c3b6ff', 'center', 700);
+}
+function animFerramentas(t){
+  const P=PAINEL;
+  const passos=[['pedido','#7ff9ff'],['código','#ffd23f'],['teste','#42e38a'],['correção','#ff8fb0']];
+  const cx=P.x+P.w/2, cy=P.y+232, R=178;
+  const ativo=Math.floor(t*1.1)%4;
+  passos.forEach((p,i)=>{
+    const a=-Math.PI/2+i*Math.PI/2, x=cx+Math.cos(a)*R, y=cy+Math.sin(a)*R, on=i===ativo;
+    ctx.fillStyle= on? p[1] : 'rgba(255,255,255,.10)';
+    const lw=(i%2)?140:172; rr(x-lw/2,y-30,lw,60,14); ctx.fill();
+    txt(p[0], x, y, 27, on?'#20143f':'#fff', 'center', 800);
+  });
+  ctx.strokeStyle='rgba(255,255,255,.25)'; ctx.lineWidth=3;
+  ctx.beginPath(); ctx.arc(cx,cy,R,0,Math.PI*2); ctx.stroke();
+  txt('quem decide', cx, cy-14, 21, '#c3b6ff', 'center', 700);
+  txt('é a pessoa', cx, cy+13, 21, '#fff', 'center', 800);
+  txt('a IA escreve rápido, mas erra: alguém precisa saber conferir', P.x+P.w/2, P.y+P.h-26, 24, '#c3b6ff', 'center', 700);
+}
+function animConvite(t){
+  const P=PAINEL;
+  const lado=290;
+  const cx=P.x+P.w-250, cy=P.y+250;
+  const plate=lado+46;
+  ctx.fillStyle='#fff'; rr(cx-plate/2,cy-plate/2,plate,plate,20); ctx.fill();
+  const n=QR.length, m=lado/n, x0=cx-lado/2, y0=cy-lado/2;
+  ctx.fillStyle='#12082c';
+  for(let i=0;i<n;i++){ const L=QR[i];
+    for(let j=0;j<n;j++) if(L[j]==='1') ctx.fillRect(Math.floor(x0+j*m),Math.floor(y0+i*m),Math.ceil(m),Math.ceil(m)); }
+  txt(SITE, cx, cy+plate/2+40, 28, '#ffd23f', 'center', 800);
+  const chao=P.y+P.h-60;
+  boneco(P.x+180, chao, misturaPose(POSE_A,POSE_B,(Math.sin(t*2.4)+1)/2), '#7ff9ff');
+}
+
+/* ---------------- slides ---------------- */
+const SLIDES=[
+ { titulo:'Como um jogo é feito?', sub:'Cinco minutos, sem enrolação',
+   linhas:['Todo jogo é desenho que muda de lugar','Quem manda nas regras é quem programa','Você pode aprender o básico hoje mesmo'],
+   nota:'Pergunte: "o que o computador precisa saber para esse boneco andar?" Ouça duas respostas antes de avançar.',
+   anim:animCapa },
+ { titulo:'A tela é um plano cartesiano', sub:'Só que de cabeça para baixo',
+   linhas:['Cada desenho tem uma posição x e y','x cresce para a direita, y cresce para baixo','Mudar o número move o desenho'],
+   nota:'Aponte para o ponto azul e leia os números mudando. Diga que o y invertido surpreende todo mundo na primeira aula.',
+   anim:animPlano },
+ { titulo:'60 quadros por segundo', sub:'Como um desenho animado',
+   linhas:['A tela é redesenhada 60 vezes a cada segundo','Cair é somar um pouquinho ao y em cada quadro','A ilusão de movimento nasce daí'],
+   nota:'Mostre os cinco quadros lado a lado e depois a bola caindo. "Ninguém desenha a queda: o programa soma."',
+   anim:animQuadros },
+ { titulo:'Variáveis', sub:'Valores com nome',
+   linhas:['Vida, pontos, velocidade e tempo são variáveis','O programa lê e altera esses valores o tempo todo','A barra de vida é só um número virando desenho'],
+   nota:'Relacione com o jogo do estande: "a barra que vocês viram descer é esse número aqui".',
+   anim:animVariaveis },
+ { titulo:'Condições', sub:'Se acontecer isto, faça aquilo',
+   linhas:['O jogo compara valores a cada quadro','Distância pequena entre dois desenhos é um acerto','Daí saem pontos, dano e fim de jogo'],
+   nota:'Espere os dois círculos se encostarem e leia o "se" em voz alta como uma frase em português.',
+   anim:animCondicao },
+ { titulo:'O jogador manda no jogo', sub:'Teclado, mouse, controle',
+   linhas:['Cada tecla e cada clique vira um comando','O programa escuta esses comandos a cada quadro','Sem entrada, o jogo seria um vídeo'],
+   nota:'Convide o visitante a apertar W, A, S, D e mexer o mouse aqui na tela. Deixe a pessoa experimentar.',
+   anim:animEntrada },
+ { titulo:'Personagens são bonecos articulados', sub:'Poses-chave e interpolação',
+   linhas:['Guardamos só duas ou três poses de cada golpe','O computador calcula todas as posições do meio','Timing certo é o que dá peso ao movimento'],
+   nota:'Mostre as duas poses cinzas nas pontas e o boneco amarelo percorrendo o meio. É a mesma técnica dos lutadores do estande.',
+   anim:animPoses },
+ { titulo:'O adversário "pensa"', sub:'Regras simples, decisão rápida',
+   linhas:['O computador mede a distância e escolhe uma ação','Dificuldade é mudar tempo de reação e agressividade','Nada de mágica: são regras escritas por gente'],
+   nota:'Pergunte: "como vocês fariam o inimigo ficar mais difícil?" Costuma aparecer "mais rápido" e "mais forte", que é exatamente o que fazemos.',
+   anim:animIA },
+ { titulo:'E a inteligência artificial?', sub:'Ferramenta, não substituta',
+   linhas:['A IA ajuda a escrever o código muito mais rápido','Quem pede, testa, corrige e decide é a pessoa','Sem saber computação, não dá para avaliar o resultado'],
+   nota:'Conte o caso real: o professor pediu, testou, recusou versões e pediu ajustes. O jogo do estande nasceu assim.',
+   anim:animFerramentas },
+ { titulo:'Quer fazer o seu?', sub:'Oficina no laboratório: 40 minutos',
+   linhas:['Você escolhe o personagem, as cores e as regras','Sai daqui com o jogo funcionando e leva para casa','Aponte a câmera do celular e conheça o curso'],
+   nota:'Convide para a oficina, informe o horário da próxima turma e peça o contato de quem quiser receber informações do curso.',
+   anim:animConvite }
+];
+
+/* ---------------- navegação ---------------- */
+let ocioso=0;
+function irPara(n){
+  ocioso=0;
+  const novo=clamp(n,0,SLIDES.length-1);
+  if(novo!==slide){ slide=novo; st=0; }
+}
+addEventListener('keydown', e=>{
+  const k=e.key.toUpperCase();
+  if(['W','A','S','D'].includes(k)) teclas[k]=true;
+  if(e.code==='Space'||e.code==='Enter'||e.code==='ArrowRight'||e.code==='PageDown'){ e.preventDefault(); irPara(slide+1); }
+  if(e.code==='ArrowLeft'||e.code==='Backspace'||e.code==='PageUp'){ e.preventDefault(); irPara(slide-1); }
+  if(e.code==='Home'){ irPara(0); }
+  if(e.code==='KeyN'){ notas=!notas; }
+  if(e.code==='KeyF'){ try{ if(!document.fullscreenElement){const r=document.documentElement.requestFullscreen&&document.documentElement.requestFullscreen(); if(r&&r.catch) r.catch(()=>{});} else document.exitFullscreen(); }catch(err){} }
+});
+addEventListener('keyup', e=>{ const k=e.key.toUpperCase(); if(['W','A','S','D'].includes(k)) teclas[k]=false; });
+addEventListener('blur', ()=>{ for(const k in teclas) teclas[k]=false; });
+cv.addEventListener('pointermove', e=>{ const r=cv.getBoundingClientRect(); mouse.x=(e.clientX-r.left)/r.width*W; mouse.y=(e.clientY-r.top)/r.height*H; });
+cv.addEventListener('pointerdown', e=>{ cv.focus(); if(e.button===2) irPara(slide-1); else irPara(slide+1); });
+cv.addEventListener('contextmenu', e=>{ e.preventDefault(); });
+
+/* ---------------- loop ---------------- */
+let ultimo=performance.now();
+function frame(now){
+  const dt=Math.min(.05,Math.max(0,(now-ultimo)/1000)); ultimo=now; T+=dt; st+=dt;
+  ocioso+=dt; if(ocioso>120 && slide!==0){ slide=0; st=0; ocioso=0; }
+  const s=SLIDES[slide];
+  fundo(); marca();
+  cartao(PAINEL.x-10,PAINEL.y-10,PAINEL.w+20,PAINEL.h+20);
+  ctx.save(); ctx.beginPath(); rr(PAINEL.x-10,PAINEL.y-10,PAINEL.w+20,PAINEL.h+20,24); ctx.clip();
+  s.anim(st); ctx.restore();
+  titulo(s);
+  rodape();
+  const ent=clamp(st/.45,0,1);
+  if(ent<1){ ctx.save(); ctx.globalAlpha=(1-ent)*.9; ctx.fillStyle='#140a3a'; ctx.fillRect(0,0,W,H); ctx.restore(); }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+cv.focus();
+})();
+</script>
+</body>
+</html>
